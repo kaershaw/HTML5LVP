@@ -1,97 +1,161 @@
+<!DOCTYPE html>
 <html>
 <head>
+
+<meta charset="UTF-8"/>
+
 <title>HTML5 Local Video Player</title>
+
 <style type="text/css">
-* {text-align:center;}
-body {font-family:Sans;}
-input {text-align:left;width:35%;}
-input.tiny {width:100px;}
-button {cursor:pointer;}
+* {
+    text-align: center;
+}
+body {
+    font-family: sans-serif;
+}
+input {
+    text-align:left;
+    width:35%;
+}
+input.tiny {
+    width:100px;
+}
+button {
+    cursor:pointer;
+}
 </style>
+
 <script type="text/javascript">
 var is_loop = false;
+var v, t_active = "t";
+
+
 function id(x){
-return document.getElementById(x) ? document.getElementById(x) : x ;
+    return document.getElementById(x);
 }
+
+
 function ff(num,n){
      if(isNaN(num)||isNaN(n)){
-           return(0)
+         return 0;
      }else{
-     return(num.toFixed(n))
-           }
+	 return num.toFixed(n);
+     }
 }
+
+
 function init(){
-id('t').value="file:///"
-v = id("v");
-if(localStorage.w)
-{
-id("w").value=localStorage.w
-id("v").style.width=localStorage.w
+    v = id("v");
+    form = id("form");
+    if(localStorage.w){
+	id("w").value = localStorage.w;
+	id("v").style.width = localStorage.w;
+    }
+    if(localStorage.h){
+	id("h").value = localStorage.h;
+	id("v").style.height = localStorage.h;
+    }
+    id("t_fallback").onkeyup = function(ev){
+	if(ev.keyCode == 13)
+	    openv();
+    };
 }
-if(localStorage.h)
-{
-id("h").value=localStorage.h
-id("v").style.height=localStorage.h
-}
-}
+
+
 function openv(){
-v.src=id('t').value
-//v.type=id('s').value
+    if(t_active == "t"){
+	var file = id("t").files[0];
+	v.src = URL.createObjectURL(id("t").files[0]);
+    }else{
+	v.src = id("t_fallback").value;
+    }
 }
+
+
 function loops()
 {
-loopd = id("b_loop");
-if (!is_loop)
-{
-loopd.innerHTML="Loop:on";
-v.loop="loop";
-is_loop = true;
+    loopd = id("b_loop");
+    if(!is_loop){
+	loopd.textContent = "Loop:on";
+	v.loop = "loop";
+	is_loop = true;
+    }else{
+	loopd.textContent = "Loop:off";
+	v.removeAttribute("loop");
+	is_loop = false;
+    }
 }
-else
-{
-loopd.innerHTML="Loop:off";
-v.removeAttribute("loop");
-is_loop = false;
-}
-}
+
+
 function v_timeupdate(){
-ct=v.currentTime
-dr=v.duration
-id("pg").innerHTML=ff(ct/dr*100,1)+"%Played&nbsp;&nbsp;"+parseInt((dr-ct)/60)+":"+ff((dr-ct)%60,0)+"Remain"
+    var ct = v.currentTime;
+    var dr = v.duration;
+    id("pg").textContent = ff(ct/dr*100,1) + "% Played  " + parseInt((dr-ct)/60) + ":" + ff((dr-ct)%60,0) + " Remain";
 }
-function rhw()
+
+
+function resize()
 {
-w=id("w").value
-h=id("h").value
-id("v").style.width=w
-id("v").style.height=h
-localStorage.w=w
-localStorage.h=h
+    var w = id("w").value;
+    var h = id("h").value;
+    id("v").style.width = w;
+    id("v").style.height = h;
+    localStorage.w = w;
+    localStorage.h = h;
 }
+
+
 function cls(){
-localStorage.h=""
-localStorage.w=""
+    localStorage.h = "";
+    localStorage.w = "";
+}
+
+
+function toggle(){
+    if(id("t_fallback").style.display == "none"){
+	id("t_fallback").style.display = "inline";
+	id("t").style.display = "none";
+	t_active = "t_fallback";
+    }else{
+	id("t_fallback").style.display = "none";
+	id("t").style.display = "inline";
+	t_active = "t";
+    }
 }
 </script>
+
 </head>
+
 <body onload="init()">
 
 <h1>HTML5 Local Video Player</h1>
 
-<input type="text" id="t" onchange="openv()" title="Video Path[For example:file:///home/123.ogv;file:///c:/123.ogv]"></input>
+<button onclick="toggle()">Toggle</button>
 
-<!--<select id="s" title="Video Type"><option value="">Not specified</option><option value="video/ogg">OGV:video/ogg</option><option value="video/mp4">MPEG4:video/mp4</option><option value="video/webm">WEBM:video/webm</option></select>-->
+&nbsp;
+
+<input type="file" id="t" name="t"></input>
+
+<input type="text" id="t_fallback" name="t" title="Video Path[For example:file:///home/123.ogv;file:///c:/123.ogv]" value="file:///" style="display: none;"></input>
 
 <button onclick="openv()" title="Open the video">&nbsp;&nbsp;OPEN&nbsp;&nbsp;</button>
 
 <div>&nbsp;</div>
 
-<div id="cter"><video id="v" controls="controls" ontimeupdate="v_timeupdate()"></video></div>
+<div>
+  <video id="v" controls="controls" ontimeupdate="v_timeupdate()"></video>
+</div>
 
-<div><button id="b_loop" onclick="loops()">Loop:off</button>
-<input type="text" class="tiny" size="4" id="w" title="Manually Limit Width,CSS format" maxlength="4" value="800px" />
-<input type="text" class="tiny" size="4" id="h" title="Manually Limit Height,CSS format" maxlength="4" value="600px" />
-<button onclick="rhw()" title="Change video into this width and height and save it to LocalStorage">Confirm</button><button onclick="cls()" title="Remove LocalStorage">Default</button>
-<br />
-<span id="pg"></span></div>
+<div>
+  <button id="b_loop" onclick="loops()">Loop:off</button>
+  <input type="text" class="tiny" id="w" title="Manually Limit Width,CSS format" maxlength="5" value="800px" />
+  <input type="text" class="tiny" id="h" title="Manually Limit Height,CSS format" maxlength="5" value="600px" />
+  <button onclick="resize()" title="Change video into the size and save it in LocalStorage">Confirm</button>
+  <button onclick="cls()" title="Remove LocalStorage (Please refresh the page after removing)">Default</button>
+  <br />
+  <span id="pg"></span>
+</div>
+
+</body>
+
 </html>
