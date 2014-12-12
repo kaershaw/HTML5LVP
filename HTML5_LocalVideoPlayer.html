@@ -14,112 +14,313 @@ body {
     font-family: sans-serif;
 }
 input {
-    text-align:left;
-    width:35%;
+    text-align: left;
+    width: 35%;
 }
 input.tiny {
-    width:100px;
+    width: 100px;
 }
-button {
-    cursor:pointer;
+button, .playlist_item_title {
+    cursor: pointer;
+}
+tr.current div {
+    font-weight: bold;
 }
 </style>
 
 <script type="text/javascript">
-var is_loop = false;
-var v, t_active = "t";
+var Video, Width, Height, Src, SrcFallback, Loop, Status;
+var isFallback = false;
+var looping = "off";
+var playList = [];
+var currentIndex = -1;
 
 
-function id(x){
-    return document.getElementById(x);
+/*
+	=================================
+	填坑記錄
+	
+	# 14.12.4
+		播放列表剛剛實現，需要完善
+		
+	# 14.12.11
+		播放列表實現一大半
+		待實現：
+			播放完後自動切換、列表循環等
+			拖拽改順序
+
+	# 14.12.12
+	        待實現：
+			拖拽改順序
+
+	=================================
+*/
+
+
+function $(selector){
+    return document.querySelector(selector);
 }
 
 
-function ff(num,n){
-     if(isNaN(num)||isNaN(n)){
-         return 0;
-     }else{
-	 return num.toFixed(n);
-     }
+function assignGlobalObject(list){
+    var item;
+    for(item in list)
+	    if(list.hasOwnProperty(item))
+		    window[item] = $(list[item]);
+}
+
+
+function createElement(type, data){
+    var element = document.createElement(type);
+    for(item in data)
+	    if(data.hasOwnProperty(item))
+		    element[item] = data[item];
+    return element;
+}
+
+
+function genTableRow(data){
+    var tr = document.createElement("tr");
+    var i, j;
+    for(i=0; i<data.length; i++){
+	var col = data[i];
+	var td = document.createElement("td");
+	if(col.children)
+	    for(j=0; j<col.children.length; j++)
+		td.appendChild(col.children[j]);
+	tr.appendChild(td);
+    }
+    return tr;
+}
+
+
+function toggleDisplay(element, value){
+    element.style.display = (element.style.display == "none")? value: "none";
+}
+
+
+function printf(args){
+    var str = arguments[0];
+    var i;
+    for(i=1; i<arguments.length; i++)
+	    str = str.replace("%"+i, arguments[i]);
+    return str;
 }
 
 
 function init(){
-    v = id("v");
-    form = id("form");
-    if(localStorage.w){
-	id("w").value = localStorage.w;
-	id("v").style.width = localStorage.w;
+    assignGlobalObject({
+	"Video":"#video",
+	"Width":"#width",
+	"Height":"#height",
+	"Src":"#src",
+	"SrcFallback":"#src_fallback",
+	"Loop":"#loop",
+	"Status":"#status",
+	"PlayList":"#playlist"
+    });
+    if(localStorage.width){
+	Width.value = localStorage.width;
+	Video.style.width = localStorage.width;
     }
-    if(localStorage.h){
-	id("h").value = localStorage.h;
-	id("v").style.height = localStorage.h;
+    if(localStorage.height){
+	Height.value = localStorage.height;
+	Video.style.height = localStorage.height;
     }
-    id("t_fallback").onkeyup = function(ev){
+    SrcFallback.onkeyup = function(ev){
 	if(ev.keyCode == 13)
-	    openv();
+	    openFallback();
     };
 }
 
 
-function openv(){
-    if(t_active == "t"){
-	var file = id("t").files[0];
-	v.src = URL.createObjectURL(id("t").files[0]);
+function openVideo(){
+    genPlayList();
+    renderPlayList();
+    if(!isFallback){
+	if(Src.files.length != 0){
+	    currentIndex = 0;
+	    changeCurrent(0);
+	}else{
+	    currentIndex = -1;
+	}
     }else{
-	v.src = id("t_fallback").value;
+	currentIndex = -1;
+	openFallback();
     }
 }
 
 
-function loops()
+function openFallback(){
+    Video.src = SrcFallback.value;
+}
+
+
+function toggleLoop()
 {
-    loopd = id("b_loop");
-    if(!is_loop){
-	loopd.textContent = "Loop:on";
-	v.loop = "loop";
-	is_loop = true;
+    if(looping == "off"){
+	Loop.textContent = "Loop:list";
+	looping = "list";
+    }else if(looping == "list"){
+	Loop.textContent = "Loop:single";
+	Video.loop = "loop";
+	looping = "single";
     }else{
-	loopd.textContent = "Loop:off";
-	v.removeAttribute("loop");
-	is_loop = false;
+	Loop.textContent = "Loop:off"
+	Video.removeAttribute("loop");
+	looping = "off";
     }
 }
 
 
-function v_timeupdate(){
-    var ct = v.currentTime;
-    var dr = v.duration;
-    id("pg").textContent = ff(ct/dr*100,1) + "% Played  " + parseInt((dr-ct)/60) + ":" + ff((dr-ct)%60,0) + " Remain";
+function timeUpdate(){
+    var ct = Video.currentTime;
+    var dr = Video.duration;
+    Status.textContent = printf("%1% Played  %2:%3 Remain", 
+	(ct/dr*100).toFixed(1), parseInt((dr-ct)/60), parseInt((dr-ct)%60));
 }
 
 
 function resize()
 {
-    var w = id("w").value;
-    var h = id("h").value;
-    id("v").style.width = w;
-    id("v").style.height = h;
-    localStorage.w = w;
-    localStorage.h = h;
+    Video.style.width = Width.value;
+    Video.style.height = Height.value;
+    localStorage.width = Width.value;
+    localStorage.height = Height.value;
 }
 
 
-function cls(){
-    localStorage.h = "";
-    localStorage.w = "";
+function clearStorage(){
+    localStorage.height = "";
+    localStorage.width = "";
 }
 
 
-function toggle(){
-    if(id("t_fallback").style.display == "none"){
-	id("t_fallback").style.display = "inline";
-	id("t").style.display = "none";
-	t_active = "t_fallback";
-    }else{
-	id("t_fallback").style.display = "none";
-	id("t").style.display = "inline";
-	t_active = "t";
+function toggleSrc(){
+    toggleDisplay(Src, "inline");
+    toggleDisplay(SrcFallback, "inline");
+    if(Src.style.display == "none")
+	isFallback = true;
+    else
+	isFallback = false;
+}
+
+
+function genPlayList(){
+    var files = Src.files;
+    playList = [];
+    var i;
+    for(i=0; i<files.length; i++){
+	var item = {};
+	item.name = files[i].name;
+	item.url = URL.createObjectURL(files[i]);
+	item.objref = files[i];
+	playList.push(item);
+    }
+}
+
+
+function renderPlayList(){
+    function parent(element){
+	return element.parentElement.parentElement;
+    }
+    PlayList.innerHTML = "";
+    var i;
+    for(i=0; i<playList.length; i++){
+	var title = createElement("div", {
+	    "textContent":playList[i].name,
+	    "className":"playlist_item_title",
+	    "onclick":function(){
+		changeCurrent(Number(parent(this).dataset.index));
+	    }
+	});
+	var remove = createElement("button", {
+	    "textContent":"×",
+	    "disabled":(playList.length == 1),
+	    "onclick":function(){
+		playListRemove(parent(this).dataset.index);
+	    }
+	});
+	var up = createElement("button", {
+	    "textContent":"↑",
+	    "disabled":(i == 0),
+	    "onclick":function(){
+		var index = Number(parent(this).dataset.index);
+		playListSwap(index, index-1);
+	    }
+	});
+	var down = createElement("button", {
+	    "textContent":"↓",
+	    "disabled":(i == playList.length-1),
+	    "onclick":function(){
+		var index = Number(parent(this).dataset.index);
+		playListSwap(index, index+1);
+	    }
+	});
+	var item = genTableRow([
+	    {
+		"children":[title]
+	    },
+	    {
+		"children":[up, down, remove]
+	    }
+	]);
+	item.dataset.index = i;
+	item.dataset.url = playList[i].url;	
+	PlayList.appendChild(item);
+    }
+}
+
+
+function playListRemove(index){
+    playList.splice(index, 1);
+    if(index < currentIndex)
+	currentIndex--;
+    else if(index == currentIndex)
+	changeCurrent(currentIndex);
+    renderPlayList();
+    highlightCurrent();
+}
+
+
+function playListSwap(a, b){
+    var temp = playList[a];
+    playList[a] = playList[b];
+    playList[b] = temp;
+    if(currentIndex == a)
+	currentIndex = b;
+    else if(currentIndex == b)
+	currentIndex = a;
+    renderPlayList();
+    highlightCurrent();
+}
+
+
+function highlightCurrent(){
+    $(printf("[data-index='%1']", currentIndex)).classList.add("current");
+}
+
+
+function changeCurrent(index){
+    currentIndex = index;
+    var old = $("tr.current");
+    if(old)
+	old.classList.remove("current");
+    highlightCurrent();
+    Video.src = playList[index].url;
+    Video.play();
+}
+
+
+function playingFinished(){
+    if(currentIndex != -1 && looping != "single"){
+	var index = currentIndex+1;
+	if(index >= playList.length){
+	    index = 0;
+	    if(looping != "list")
+		return;
+	}
+	changeCurrent(index);
     }
 }
 </script>
@@ -130,30 +331,37 @@ function toggle(){
 
 <h1>HTML5 Local Video Player</h1>
 
-<button onclick="toggle()">Toggle</button>
+<button onclick="toggleSrc()">Toggle</button>
 
 &nbsp;
 
-<input type="file" id="t" name="t"></input>
+<input type="file" id="src" multiple="multiple"></input>
 
-<input type="text" id="t_fallback" name="t" title="Video Path[For example:file:///home/123.ogv;file:///c:/123.ogv]" value="file:///" style="display: none;"></input>
+<input type="text" id="src_fallback" title="Video Path[For example:file:///home/123.ogv;file:///c:/123.ogv]" value="file:///" style="display: none;"></input>
 
-<button onclick="openv()" title="Open the video">&nbsp;&nbsp;OPEN&nbsp;&nbsp;</button>
+<button onclick="openVideo()" title="Open the video">&nbsp;&nbsp;OPEN&nbsp;&nbsp;</button>
 
 <div>&nbsp;</div>
 
 <div>
-  <video id="v" controls="controls" ontimeupdate="v_timeupdate()"></video>
+    <video id="video" controls="controls" ontimeupdate="timeUpdate()" onended="playingFinished()"></video>
 </div>
 
 <div>
-  <button id="b_loop" onclick="loops()">Loop:off</button>
-  <input type="text" class="tiny" id="w" title="Manually Limit Width,CSS format" maxlength="5" value="800px" />
-  <input type="text" class="tiny" id="h" title="Manually Limit Height,CSS format" maxlength="5" value="600px" />
-  <button onclick="resize()" title="Change video into the size and save it in LocalStorage">Confirm</button>
-  <button onclick="cls()" title="Remove LocalStorage (Please refresh the page after removing)">Default</button>
-  <br />
-  <span id="pg"></span>
+    <button id="loop" onclick="toggleLoop()">Loop:off</button>
+    <input type="text" class="tiny" id="width" title="Manually Specified Width, CSS format" maxlength="5" value="800px" />
+    <input type="text" class="tiny" id="height" title="Manually Specified Height, CSS format" maxlength="5" value="600px" />
+    <button onclick="resize()" title="Change video into the size and save it in LocalStorage">Confirm</button>
+    <button onclick="clearStorage()" title="Remove LocalStorage (Please refresh the page after removing)">Default</button>
+    <br/>
+    <div id="status"></div>
+</div>
+
+<div>&nbsp;</div>
+
+<div>
+    <table id="playlist" style="margin: auto;">
+    </table>
 </div>
 
 </body>
