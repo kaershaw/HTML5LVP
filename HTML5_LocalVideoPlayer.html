@@ -34,6 +34,7 @@ var isFallback = false;
 var looping = "off";
 var playList = [];
 var currentIndex = -1;
+var dragSrc = null;
 
 
 /*
@@ -52,6 +53,9 @@ var currentIndex = -1;
 	# 14.12.12
 	        待實現：
 			拖拽改順序
+
+	# 14.12.29
+		拖拽改順序已實現
 
 	=================================
 */
@@ -230,8 +234,27 @@ function renderPlayList(){
 	var title = createElement("div", {
 	    "textContent":playList[i].name,
 	    "className":"playlist_item_title",
+	    "draggable":"true",
 	    "onclick":function(){
 		changeCurrent(Number(parent(this).dataset.index));
+	    },
+	    "ondragstart":function(ev){
+		dragSrc = parent(this).dataset.index;
+		ev.dataTransfer.effectAllowed = "move";
+		ev.dataTransfer.setData('text/plain', 'anything');
+	    },
+	    "ondragover":function(ev){
+		if(ev.preventDefault)
+		    ev.preventDefault();
+	    },
+	    "ondrop":function(ev){
+		var index = parent(this).dataset.index;
+		ev.preventDefault();
+		if(ev.stopPropagation)
+		    ev.stopPropagation();
+		if(index != dragSrc)
+		    playListSwap(dragSrc, index);
+		dragSrc = null;
 	    }
 	});
 	var remove = createElement("button", {
@@ -241,28 +264,12 @@ function renderPlayList(){
 		playListRemove(parent(this).dataset.index);
 	    }
 	});
-	var up = createElement("button", {
-	    "textContent":"↑",
-	    "disabled":(i == 0),
-	    "onclick":function(){
-		var index = Number(parent(this).dataset.index);
-		playListSwap(index, index-1);
-	    }
-	});
-	var down = createElement("button", {
-	    "textContent":"↓",
-	    "disabled":(i == playList.length-1),
-	    "onclick":function(){
-		var index = Number(parent(this).dataset.index);
-		playListSwap(index, index+1);
-	    }
-	});
 	var item = genTableRow([
 	    {
 		"children":[title]
 	    },
 	    {
-		"children":[up, down, remove]
+		"children":[remove]
 	    }
 	]);
 	item.dataset.index = i;
