@@ -20,8 +20,8 @@ HTML5 本地視頻播放器
 支持格式取決於瀏覽器。
 
 2013.01 H2O
-<img src="README/screenshoot1.png" />
+<img src="README/screenshot1.png" />
 2014.08 LiOH
-<img src="README/screenshoot2.png" />
+<img src="README/screenshot2.png" />
 2014.12 NaOH
-<img src="README/screenshoot3.png" />
+<img src="README/screenshot3.png" />
